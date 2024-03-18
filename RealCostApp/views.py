@@ -59,18 +59,23 @@ def addPdfToImage(request):
 
             pdf_data = pdf_data_tb.objects.create(pdf_file=pdf_file, created_at=now, updated_at=now)
 
+            # Batch image saving process
+            image_files = []
+
             for i, image in enumerate(images):
                 image_filename = f'page_{i+1}.png'
-                page_title = f'Page {i+1}'
-                pdf_images_data = pdf_to_image_data_tb.objects.create(
-                    pdf_id=pdf_data, title=page_title, created_at=now, updated_at=now
-                )
-
-                # Save the image file to disk
                 image_io = BytesIO()
                 image.save(image_io, format='PNG')
                 image_file = ContentFile(image_io.getvalue(), name=image_filename)
-                pdf_images_data.image.save(image_filename, image_file, save=True)
+                image_files.append((image_filename, image_file))
+
+            # Save all images in a single transaction
+            with transaction.atomic():
+                for image_filename, image_file in image_files:
+                    pdf_images_data = pdf_to_image_data_tb.objects.create(
+                        pdf_id=pdf_data, title=page_title, created_at=now, updated_at=now
+                    )
+                    pdf_images_data.image.save(image_filename, image_file, save=True)
 
             response = {
                 "success": True,
@@ -88,6 +93,7 @@ def addPdfToImage(request):
         }
 
     return Response(response)
+
 
 
 
