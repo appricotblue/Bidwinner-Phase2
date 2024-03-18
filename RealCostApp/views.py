@@ -34,7 +34,7 @@ def appAuthToken(request):
                         }
 
     return Response(response)
-from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfReader
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
@@ -53,12 +53,12 @@ def addPdfToImage(request):
 
     try:
         with pdf_file.open('rb') as f:
-            pdf_reader = PdfFileReader(f)
-            num_pages = pdf_reader.numPages
+            pdf_reader = PdfReader(f)
+            num_pages = len(pdf_reader.pages)  # Use len(pdf_reader.pages) instead of numPages
 
             for page_num in range(num_pages):
                 # Convert each page to an image
-                page = pdf_reader.getPage(page_num)
+                page = pdf_reader.pages[page_num]
                 page_image = page.to_image()
                 image_io = BytesIO()
                 page_image.save(image_io, format='PNG')
