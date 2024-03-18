@@ -35,6 +35,9 @@ def appAuthToken(request):
 
     return Response(response)
 from PyPDF2 import PdfReader
+from pdf2image import convert_from_bytes
+from PIL import Image
+from django.core.files.base import ContentFile
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
@@ -78,8 +81,11 @@ def addPdfToImage(request):
     return Response(response)
 
 def convert_pdf_to_images(pdf_file):
-    # Iterate through each page of the PDF file and yield the corresponding image bytes
-    for page_num, image in enumerate(convert_from_path(pdf_file.temporary_file_path(), dpi=300), start=1):
+    # Convert PDF file to images
+    images = convert_from_bytes(pdf_file.read(), dpi=300)
+    
+    # Iterate through each page and yield image bytes
+    for image in images:
         # Convert image to PNG format and compress
         png_image = compress_image(image)
         yield png_image
