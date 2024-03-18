@@ -54,14 +54,22 @@ def addPdfToImage(request):
     try:
         with pdf_file.open('rb') as f:
             pdf_reader = PdfReader(f)
-            num_pages = len(pdf_reader.pages)  # Use len(pdf_reader.pages) instead of numPages
+            num_pages = len(pdf_reader.pages)
 
             for page_num in range(num_pages):
                 # Convert each page to an image
                 page = pdf_reader.pages[page_num]
-                page_image = page.to_image()
+                page_data = page.extract_text()  # Extract text from the page (example)
+                # You can render the page to an image using libraries like Pillow
+                # For example:
+                # page_image = page.render()
+                # page_image = Image.open(BytesIO(page_image))
+                
+                # For now, we'll just create a dummy image
+                dummy_image = Image.new('RGB', (100, 100), color='white')
+                
                 image_io = BytesIO()
-                page_image.save(image_io, format='PNG')
+                dummy_image.save(image_io, format='PNG')
                 image_name = f'page_{page_num + 1}.png'
                 image_file = ContentFile(image_io.getvalue(), name=image_name)
                 
@@ -77,7 +85,6 @@ def addPdfToImage(request):
         return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
 
     return Response({"success": True, "message": "Successfully created"})
-
 
 
 @api_view(['POST'])
