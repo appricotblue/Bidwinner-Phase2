@@ -35,120 +35,93 @@ def appAuthToken(request):
 
     return Response(response)
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from django.db import transaction
-
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
     app_token = data.get('app_token')
     get_token = app_auth_token_tb.objects.first()
 
-    if app_token == get_token.token:
-        pdf_file = request.FILES.get('pdf_file')
-        now = datetime.now()
+    if app_token != get_token.token:
+        return Response({"success": False, "message": "Invalid Token or User"})
 
-        if pdf_file and pdf_file.content_type.startswith('application/pdf'):
-            try:
-                images = convert_from_bytes(pdf_file.read())
-            except Exception as e:
-                # Log the error
-                print(f"Error processing PDF file: {e}")
-                response = {
-                    "success": False,
-                    "message": "Error processing PDF file",
-                }
-                return Response(response)
+    pdf_file = request.FILES.get('pdf_file')
+    if not pdf_file or not pdf_file.content_type.startswith('application/pdf'):
+        return Response({"success": False, "message": "Invalid PDF file provided"})
 
-            pdf_data = pdf_data_tb.objects.create(pdf_file=pdf_file, created_at=now, updated_at=now)
+    now = datetime.now()
+    pdf_data = pdf_data_tb.objects.create(pdf_file=pdf_file, created_at=now, updated_at=now)
 
-            # Define a function to save images
-            def save_image(page_num, image):
-                image_format = 'PNG'  # Change this to 'JPEG', 'WebP', etc., as needed
-                image_filename = f'page_{page_num}.{image_format.lower()}'
-                page_title = f'Page {page_num}'  # Define page title here
+    try:
+        with pdf_file.open('rb') as f:
+            pdf_reader = PdfFileReader(f)
+            num_pages = pdf_reader.numPages
+
+            for page_num in range(num_pages):
+                # Convert each page to an image
+                page = pdf_reader.getPage(page_num)
+                page_image = page.to_image()
                 image_io = BytesIO()
-                image.save(image_io, format=image_format)
-                image_file = ContentFile(image_io.getvalue(), name=image_filename)
-                return page_title, image_filename, image_file
+                page_image.save(image_io, format='PNG')
+                image_name = f'page_{page_num + 1}.png'
+                image_file = ContentFile(image_io.getvalue(), name=image_name)
+                
+                # Save image data to database
+                pdf_images_data = pdf_to_image_data_tb.objects.create(
+                    pdf_id=pdf_data,
+                    title=f'Page {page_num + 1}',
+                    created_at=now,
+                    updated_at=now,
+                    image=image_file
+                )
+    except Exception as e:
+        return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
 
-            # Save images in parallel
-            with ThreadPoolExecutor() as executor:
-                futures = [executor.submit(save_image, i+1, image) for i, image in enumerate(images)]
-
-                image_files = []
-                for future in as_completed(futures):
-                    try:
-                        page_title, image_filename, image_file = future.result()
-                        image_files.append((page_title, image_filename, image_file))
-                    except Exception as e:
-                        # Log the error
-                        print(f"Error saving image: {e}")
-
-            # Save all images in a single transaction
-            with transaction.atomic():
-                for page_title, image_filename, image_file in image_files:
-                    pdf_images_data = pdf_to_image_data_tb.objects.create(
-                        pdf_id=pdf_data, title=page_title, created_at=now, updated_at=now
-                    )
-                    pdf_images_data.image.save(image_filename, image_file, save=True)
-
-            response = {
-                "success": True,
-                "message": "Successfully created",
-            }
-        else:
-            response = {
-                "success": False,
-                "message": "Invalid PDF file provided",
-            }
-    else:
-        response = {
-            "success": False,
-            "message": "Invalid Token or User",
-        }
-
-    return Response(response)
-
+    return Response({"success": True, "message": "Successfully created"})
 
 
 
 @api_view(['POST'])
 def listPdfToImage(request):
-    data = request.data
-    app_token = data.get('app_token')
-    get_token = app_auth_token_tb.objects.first()
-
+    data        = request.data
+    app_token   = data.get('app_token')
+    get_token   = app_auth_token_tb.objects.first()
+    
+     
     if app_token == get_token.token:
-        pdf_images_details = []
-        for details in pdf_to_image_data_tb.objects.all():
-            pdf_images_details.append({
-                "success": True,
-                "pdf_id": details.pdf_id.id,
-                "pdf_image_id": details.id,
-                "title": details.title,
-                "pdf_image": details.image.url if details.image else '',
-                "created_at": details.created_at,
-                "updated_at": details.updated_at
-            })
 
-        response = {
-            "pdf_images_details": pdf_images_details
-        }
+        get_all_pdf_images   = pdf_to_image_data_tb.objects.all()
+ 
+        pdf_images_details    = []
+        for details in get_all_pdf_images:  
+            pdf_images_details.append({
+                             "success"          : True,
+                             "pdf_id"           : details.pdf_id.id,
+                             "pdf_image_id"     : details.id,
+                             "title"            : details.title,
+                             "pdf_image"        : details.image.url if details.image else '',
+                             "created_at"       : details.created_at,
+                             "updated_at"       : details.updated_at
+            })
+        
+        response        =   {
+                                "pdf_images_details" : pdf_images_details
+                            }
     else:
-        response = {
-            "success": False,
-            "message": "Invalid Token",
-        }
+        response        =   {
+                                "success"   : False,
+                                "message"   : "Invalid Token",
+                            }
 
     return Response(response)
 
-
 def extract_text_from_coords(image_path, coords):
     image = Image.open(image_path)
+
     x1, y1, x2, y2 = coords
     cropped_image = image.crop((x1, y1, x2, y2))
+
     text = pytesseract.image_to_string(cropped_image)
+
     return text.strip() or 'N/a'
 
 
