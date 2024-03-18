@@ -144,16 +144,49 @@ def extract_text_from_coords(image_path, coords):
 
 
 from PyPDF2 import PdfWriter, PdfReader
+import io
 
-def compress_pdf(pdf_file):
-    output_pdf = BytesIO()
-    pdf_writer = PdfWriter()
-    pdf_reader = PdfReader(pdf_file)
-    for page_num in range(len(pdf_reader.pages)):
-        pdf_writer.add_page(pdf_reader.pages[page_num])
-    pdf_writer.write(output_pdf)
+def compress_pdf(pdf_file, target_size_kb=500):
+    output_pdf = io.BytesIO()
+    initial_pdf = io.BytesIO(pdf_file.read())
+    
+    # Calculate target size in bytes
+    target_size_bytes = target_size_kb * 1024
+    
+    # Compression parameters
+    quality = 30  # Adjust quality as needed
+
+    while True:
+        output_pdf.seek(0)
+        output_pdf.truncate(0)
+
+        pdf_writer = PdfWriter()
+        pdf_reader = PdfReader(initial_pdf)
+        
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            # Adjust image quality and downsampling here if needed
+            pdf_writer.add_page(page)
+        
+        pdf_writer.write(output_pdf)
+        current_size = output_pdf.tell()
+        
+        if current_size <= target_size_bytes:
+            break
+        
+        # Decrease quality or apply other compression strategies if needed
+        quality -= 5  # Example: Reduce quality by 5 units
+
+        if quality <= 0:
+            # Quality is too low to achieve target size
+            raise ValueError("Cannot compress PDF to target size with the provided constraints")
+    
     output_pdf.seek(0)
-    return ContentFile(output_pdf.getvalue(), name="compressed_pdf.pdf")
+    return io.BytesIO(output_pdf.getvalue())
+
+# Example usage:
+# compressed_pdf = compress_pdf(pdf_file, target_size_kb=500)
+
 
 
 
