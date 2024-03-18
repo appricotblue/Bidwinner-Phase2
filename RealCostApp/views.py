@@ -102,7 +102,8 @@ def appAuthToken(request):
 #                    }
 
 #     return Response(response)
-
+import concurrent.futures
+from io import BytesIO
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
