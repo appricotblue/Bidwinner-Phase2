@@ -34,7 +34,7 @@ def appAuthToken(request):
                         }
 
     return Response(response)
-
+from django.db import transaction
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
@@ -63,15 +63,18 @@ def addPdfToImage(request):
             image_files = []
 
             for i, image in enumerate(images):
-                image_filename = f'page_{i+1}.png'
+                # Choose the appropriate image format based on your requirements
+                image_format = 'PNG'  # Change this to 'JPEG', 'WebP', etc., as needed
+                image_filename = f'page_{i+1}.{image_format.lower()}'
+                page_title = f'Page {i+1}'  # Define page title here
                 image_io = BytesIO()
-                image.save(image_io, format='PNG')
+                image.save(image_io, format=image_format)
                 image_file = ContentFile(image_io.getvalue(), name=image_filename)
-                image_files.append((image_filename, image_file))
+                image_files.append((page_title, image_filename, image_file))
 
             # Save all images in a single transaction
             with transaction.atomic():
-                for image_filename, image_file in image_files:
+                for page_title, image_filename, image_file in image_files:
                     pdf_images_data = pdf_to_image_data_tb.objects.create(
                         pdf_id=pdf_data, title=page_title, created_at=now, updated_at=now
                     )
