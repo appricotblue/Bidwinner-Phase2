@@ -34,7 +34,7 @@ def appAuthToken(request):
                         }
 
     return Response(response)
-
+from PyPDF2 import PdfFileReader
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
