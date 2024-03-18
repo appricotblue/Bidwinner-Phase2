@@ -51,28 +51,25 @@ def addPdfToImage(request):
     now = datetime.now()
 
     try:
-        # Convert PDF to images
-        images = convert_from_bytes(pdf_file.read())
-
         # Create pdf_data_tb entry
         pdf_data = pdf_data_tb.objects.create(created_at=now, updated_at=now)
 
-        # Convert and save each image
-        for i, image in enumerate(images):
-            # Compress the image and save it
-            compressed_image = compress_image(image)
-            image_filename = f'page_{i+1}.png'
+        # Process each page of the PDF file
+        for page_num, image_bytes in enumerate(convert_pdf_to_images(pdf_file), start=1):
+            # Save the image data to the database
             pdf_images_data = pdf_to_image_data_tb.objects.create(
                 pdf_id=pdf_data,
-                title=f'Page {i+1}',
+                title=f'Page {page_num}',
                 created_at=now,
                 updated_at=now
             )
-            pdf_images_data.image.save(image_filename, ContentFile(compressed_image), save=True)
+            # Save the image file
+            image_file = ContentFile(image_bytes, name=f'page_{page_num}.png')
+            pdf_images_data.image.save(f'page_{page_num}.png', image_file, save=True)
 
         response = {
             "success": True,
-            "message": "Successfully created"
+            "message": "Successfully created",
         }
 
     except Exception as e:
@@ -80,19 +77,24 @@ def addPdfToImage(request):
 
     return Response(response)
 
+def convert_pdf_to_images(pdf_file):
+    # Iterate through each page of the PDF file and yield the corresponding image bytes
+    for page_num, image in enumerate(convert_from_path(pdf_file.temporary_file_path(), dpi=300), start=1):
+        # Convert image to PNG format and compress
+        png_image = compress_image(image)
+        yield png_image
+
 def compress_image(image):
     # Resize the image and convert to RGB mode (required for PNG format)
     resized_image = image.resize((int(image.width / 2), int(image.height / 2)))
     resized_image = resized_image.convert('RGB')
-    
-    # Create a BytesIO object to hold the compressed image
-    compressed_image_stream = BytesIO()
-    
-    # Save the resized image to the BytesIO object with compression
-    resized_image.save(compressed_image_stream, format='PNG', optimize=True)
-    
-    # Return the compressed image stream
-    return compressed_image_stream.getvalue()
+
+    # Save the resized image to a BytesIO object with compression
+    with BytesIO() as output:
+        resized_image.save(output, format='PNG', optimize=True)
+        png_bytes = output.getvalue()
+
+    return png_bytes
 
 
 
