@@ -83,7 +83,10 @@ def addPdfToImage(request):
         }
 
     except Exception as e:
-        return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
+        if "security policy" in str(e).lower():
+            return Response({"success": False, "message": "Error processing PDF: Security policy restricts the operation"})
+        else:
+            return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
 
     return Response(response)
 
