@@ -34,7 +34,13 @@ def appAuthToken(request):
                         }
 
     return Response(response)
+
+from io import BytesIO
 from PyPDF2 import PdfReader
+from wand.image import Image
+from pdf2image import convert_from_path
+from django.core.files.base import ContentFile
+
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
@@ -49,42 +55,34 @@ def addPdfToImage(request):
         return Response({"success": False, "message": "Invalid PDF file provided"})
 
     now = datetime.now()
-    pdf_data = pdf_data_tb.objects.create(pdf_file=pdf_file, created_at=now, updated_at=now)
 
     try:
-        with pdf_file.open('rb') as f:
-            pdf_reader = PdfReader(f)
-            num_pages = len(pdf_reader.pages)
+        # Convert PDF pages to images
+        images = convert_from_bytes(pdf_file.read(), dpi=300)
 
-            for page_num in range(num_pages):
-                # Convert each page to an image
-                page = pdf_reader.pages[page_num]
-                page_data = page.extract_text()  # Extract text from the page (example)
-                # You can render the page to an image using libraries like Pillow
-                # For example:
-                # page_image = page.render()
-                # page_image = Image.open(BytesIO(page_image))
-                
-                # For now, we'll just create a dummy image
-                dummy_image = Image.new('RGB', (100, 100), color='white')
-                
-                image_io = BytesIO()
-                dummy_image.save(image_io, format='PNG')
-                image_name = f'page_{page_num + 1}.png'
-                image_file = ContentFile(image_io.getvalue(), name=image_name)
-                
-                # Save image data to database
-                pdf_images_data = pdf_to_image_data_tb.objects.create(
-                    pdf_id=pdf_data,
-                    title=f'Page {page_num + 1}',
-                    created_at=now,
-                    updated_at=now,
-                    image=image_file
-                )
+        # Create pdf_data_tb entry
+        pdf_data = pdf_data_tb.objects.create(created_at=now, updated_at=now)
+
+        # Save image data to database
+        for i, image in enumerate(images):
+            image_io = BytesIO()
+            image.save(image_io, format='PNG')
+            image_file = ContentFile(image_io.getvalue(), name=f'page_{i + 1}.png')
+
+            pdf_images_data = pdf_to_image_data_tb.objects.create(
+                pdf_id=pdf_data,
+                title=f'Page {i + 1}',
+                created_at=now,
+                updated_at=now,
+                image=image_file
+            )
+
     except Exception as e:
         return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
 
     return Response({"success": True, "message": "Successfully created"})
+
+
 
 
 @api_view(['POST'])
