@@ -34,7 +34,10 @@ def appAuthToken(request):
                         }
 
     return Response(response)
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from django.db import transaction
+
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
@@ -59,18 +62,28 @@ def addPdfToImage(request):
 
             pdf_data = pdf_data_tb.objects.create(pdf_file=pdf_file, created_at=now, updated_at=now)
 
-            # Batch image saving process
-            image_files = []
-
-            for i, image in enumerate(images):
-                # Choose the appropriate image format based on your requirements
+            # Define a function to save images
+            def save_image(page_num, image):
                 image_format = 'PNG'  # Change this to 'JPEG', 'WebP', etc., as needed
-                image_filename = f'page_{i+1}.{image_format.lower()}'
-                page_title = f'Page {i+1}'  # Define page title here
+                image_filename = f'page_{page_num}.{image_format.lower()}'
+                page_title = f'Page {page_num}'  # Define page title here
                 image_io = BytesIO()
                 image.save(image_io, format=image_format)
                 image_file = ContentFile(image_io.getvalue(), name=image_filename)
-                image_files.append((page_title, image_filename, image_file))
+                return page_title, image_filename, image_file
+
+            # Save images in parallel
+            with ThreadPoolExecutor() as executor:
+                futures = [executor.submit(save_image, i+1, image) for i, image in enumerate(images)]
+
+                image_files = []
+                for future in as_completed(futures):
+                    try:
+                        page_title, image_filename, image_file = future.result()
+                        image_files.append((page_title, image_filename, image_file))
+                    except Exception as e:
+                        # Log the error
+                        print(f"Error saving image: {e}")
 
             # Save all images in a single transaction
             with transaction.atomic():
