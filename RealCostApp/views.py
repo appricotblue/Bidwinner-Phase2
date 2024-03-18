@@ -34,11 +34,75 @@ def appAuthToken(request):
                         }
 
     return Response(response)
-from PyPDF2 import PdfReader
-from pdf2image import convert_from_bytes
-from PIL import Image
-from django.core.files.base import ContentFile
-from wand.image import Image as WandImage
+
+# @api_view(['POST'])
+# def addPdfToImage(request):
+#     data       = request.data
+#     app_token  = data.get('app_token')
+#     get_token  = app_auth_token_tb.objects.first()
+
+#     if app_token == get_token.token:
+#         pdf_file   = request.FILES.get('pdf_file')
+#         now        = datetime.now()
+
+#         if pdf_file and pdf_file.content_type.startswith('application/pdf'):
+            
+        
+#             images  = convert_from_bytes(pdf_file.read())
+
+#             pdf_data  = pdf_data_tb(
+
+#                     pdf_file     = pdf_file,
+#                     created_at   = now,
+#                     updated_at   = now
+                
+#                 )
+            
+#             pdf_data.save()
+
+#             for i, image in enumerate(images):
+#                 # Generate filenames and save images
+#                 image_filename = f'page_{i+1}.png'
+#                 page_title = f'Page {i+1}'  # Example: Page 1, Page 2, etc.
+                
+#                 pdf_images_data = pdf_to_image_data_tb(
+#                     pdf_id=pdf_data,
+#                     title=page_title,  # Set title here
+#                     created_at=now,
+#                     updated_at=now
+#                 )
+#                 pdf_images_data.save()
+
+#                 # Save the image file
+#                 image_io = BytesIO()
+#                 image.save(image_io, format='PNG')
+#                 image_file = ContentFile(image_io.getvalue(), name=image_filename)
+#                 pdf_images_data.image.save(image_filename, image_file, save=True)
+
+
+#             response = {
+
+#                             "success": True,
+#                             "message": "Successfully created",
+
+#                        }
+#         else:
+#             response = {
+
+#                             "success": False,
+#                             "message": "Invalid PDF file provided",
+            
+#                        }
+#     else:
+#         response = {
+
+#                         "success": False,
+#                         "message": "Invalid Token or User",
+        
+#                    }
+
+#     return Response(response)
+
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
@@ -58,24 +122,25 @@ def addPdfToImage(request):
         # Create pdf_data_tb entry
         pdf_data = pdf_data_tb.objects.create(created_at=now, updated_at=now)
 
-        # Process each page of the PDF file
-        with WandImage(file=pdf_file, resolution=300) as pdf:
-            for i, page in enumerate(pdf.sequence, 1):
-                with WandImage(page) as img:
-                    # Convert the page to PNG
-                    img.format = 'png'
-                    png_image_bytes = img.make_blob()
+        # Convert PDF to images
+        images = convert_from_bytes(pdf_file.read(), dpi=300)
 
-                # Save the image data to the database
-                pdf_images_data = pdf_to_image_data_tb.objects.create(
-                    pdf_id=pdf_data,
-                    title=f'Page {i}',
-                    created_at=now,
-                    updated_at=now
-                )
-                # Save the PNG image file
-                image_file = ContentFile(png_image_bytes, name=f'page_{i}.png')
-                pdf_images_data.image.save(f'page_{i}.png', image_file, save=True)
+        # Process each image (page)
+        for i, img in enumerate(images, 1):
+            # Save the image data to the database
+            pdf_images_data = pdf_to_image_data_tb.objects.create(
+                pdf_id=pdf_data,
+                title=f'Page {i}',
+                created_at=now,
+                updated_at=now
+            )
+
+            # Convert the image to PNG format
+            png_image_bytes = img.save(format='PNG')
+            
+            # Save the PNG image file
+            image_file = ContentFile(png_image_bytes, name=f'page_{i}.png')
+            pdf_images_data.image.save(f'page_{i}.png', image_file, save=True)
 
         response = {
             "success": True,
@@ -83,12 +148,23 @@ def addPdfToImage(request):
         }
 
     except Exception as e:
-        if "security policy" in str(e).lower():
-            return Response({"success": False, "message": "Error processing PDF: Security policy restricts the operation"})
-        else:
-            return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
+        return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
 
     return Response(response)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @api_view(['POST'])
