@@ -38,6 +38,7 @@ from PyPDF2 import PdfReader
 from pdf2image import convert_from_bytes
 from PIL import Image
 from django.core.files.base import ContentFile
+from wand.image import Image as WandImage
 @api_view(['POST'])
 def addPdfToImage(request):
     data = request.data
