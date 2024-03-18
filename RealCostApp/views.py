@@ -46,12 +46,22 @@ def addPdfToImage(request):
         now = datetime.now()
 
         if pdf_file and pdf_file.content_type.startswith('application/pdf'):
+            try:
+                images = convert_from_bytes(pdf_file.read())
+            except Exception as e:
+                # Log the error
+                print(f"Error processing PDF file: {e}")
+                response = {
+                    "success": False,
+                    "message": "Error processing PDF file",
+                }
+                return Response(response)
+
             pdf_data = pdf_data_tb.objects.create(pdf_file=pdf_file, created_at=now, updated_at=now)
-            images = convert_from_bytes(pdf_file.read())
 
             for i, image in enumerate(images):
                 image_filename = f'page_{i+1}.png'
-                page_title = f'Page {i+1}'  # Example: Page 1, Page 2, etc.
+                page_title = f'Page {i+1}'
                 pdf_images_data = pdf_to_image_data_tb.objects.create(
                     pdf_id=pdf_data, title=page_title, created_at=now, updated_at=now
                 )
@@ -78,6 +88,7 @@ def addPdfToImage(request):
         }
 
     return Response(response)
+
 
 
 @api_view(['POST'])
