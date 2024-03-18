@@ -122,11 +122,15 @@ def addPdfToImage(request):
         # Create pdf_data_tb entry
         pdf_data = pdf_data_tb.objects.create(created_at=now, updated_at=now)
 
-        # Convert PDF to images
-        images = convert_from_bytes(pdf_file.read(), dpi=300)
+        # Convert PDF to PNG images
+        images = []
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(convert_page_to_png, page) for page in convert_from_bytes(pdf_file.read(), dpi=300)]
+            for future in concurrent.futures.as_completed(futures):
+                images.append(future.result())
 
         # Process each image (page)
-        for i, img in enumerate(images, 1):
+        for i, image_bytes in enumerate(images, 1):
             # Save the image data to the database
             pdf_images_data = pdf_to_image_data_tb.objects.create(
                 pdf_id=pdf_data,
@@ -135,11 +139,8 @@ def addPdfToImage(request):
                 updated_at=now
             )
 
-            # Convert the image to PNG format
-            png_image_bytes = img.save(format='PNG')
-            
             # Save the PNG image file
-            image_file = ContentFile(png_image_bytes, name=f'page_{i}.png')
+            image_file = ContentFile(image_bytes, name=f'page_{i}.png')
             pdf_images_data.image.save(f'page_{i}.png', image_file, save=True)
 
         response = {
@@ -151,6 +152,12 @@ def addPdfToImage(request):
         return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
 
     return Response(response)
+
+def convert_page_to_png(page):
+    img_bytes = BytesIO()
+    page.save(img_bytes, format='PNG')
+    return img_bytes.getvalue()
+
 
 
 
