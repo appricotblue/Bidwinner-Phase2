@@ -36,7 +36,7 @@ def appAuthToken(request):
     return Response(response)
 
 
-from PyPDF2 import PdfFileWriter, PdfFileReader
+
 
 
 @api_view(['POST'])
@@ -143,15 +143,18 @@ def extract_text_from_coords(image_path, coords):
     return text.strip() or 'N/a'
 
 
+from PyPDF2 import PdfWriter, PdfReader
+
 def compress_pdf(pdf_file):
     output_pdf = BytesIO()
-    pdf_writer = PdfFileWriter()
-    pdf_reader = PdfFileReader(pdf_file)
-    for page_num in range(pdf_reader.numPages):
-        pdf_writer.addPage(pdf_reader.getPage(page_num))
+    pdf_writer = PdfWriter()
+    pdf_reader = PdfReader(pdf_file)
+    for page_num in range(len(pdf_reader.pages)):
+        pdf_writer.add_page(pdf_reader.pages[page_num])
     pdf_writer.write(output_pdf)
     output_pdf.seek(0)
     return ContentFile(output_pdf.getvalue(), name="compressed_pdf.pdf")
+
 
 
 
