@@ -58,17 +58,23 @@ def addPdfToImage(request):
         pdf_data = pdf_data_tb.objects.create(created_at=now, updated_at=now)
 
         # Process each page of the PDF file
-        for page_num, image_bytes in enumerate(convert_pdf_to_images(pdf_file), start=1):
-            # Save the image data to the database
-            pdf_images_data = pdf_to_image_data_tb.objects.create(
-                pdf_id=pdf_data,
-                title=f'Page {page_num}',
-                created_at=now,
-                updated_at=now
-            )
-            # Save the image file
-            image_file = ContentFile(image_bytes, name=f'page_{page_num}.png')
-            pdf_images_data.image.save(f'page_{page_num}.png', image_file, save=True)
+        with WandImage(file=pdf_file, resolution=300) as pdf:
+            for i, page in enumerate(pdf.sequence, 1):
+                with WandImage(page) as img:
+                    # Convert the page to PNG
+                    img.format = 'png'
+                    png_image_bytes = img.make_blob()
+
+                # Save the image data to the database
+                pdf_images_data = pdf_to_image_data_tb.objects.create(
+                    pdf_id=pdf_data,
+                    title=f'Page {i}',
+                    created_at=now,
+                    updated_at=now
+                )
+                # Save the PNG image file
+                image_file = ContentFile(png_image_bytes, name=f'page_{i}.png')
+                pdf_images_data.image.save(f'page_{i}.png', image_file, save=True)
 
         response = {
             "success": True,
@@ -79,29 +85,6 @@ def addPdfToImage(request):
         return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
 
     return Response(response)
-
-def convert_pdf_to_images(pdf_file):
-    # Convert PDF file to images
-    images = convert_from_bytes(pdf_file.read(), dpi=300)
-    
-    # Iterate through each page and yield image bytes
-    for image in images:
-        # Convert image to PNG format and compress
-        png_image = compress_image(image)
-        yield png_image
-
-def compress_image(image):
-    # Resize the image and convert to RGB mode (required for PNG format)
-    resized_image = image.resize((int(image.width / 2), int(image.height / 2)))
-    resized_image = resized_image.convert('RGB')
-
-    # Save the resized image to a BytesIO object with compression
-    with BytesIO() as output:
-        resized_image.save(output, format='PNG', optimize=True)
-        png_bytes = output.getvalue()
-
-    return png_bytes
-
 
 
 @api_view(['POST'])
