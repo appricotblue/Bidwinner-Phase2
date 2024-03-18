@@ -184,3 +184,64 @@ def addAutoRenameImage(request):
                             }
     
     return Response(response)
+
+@api_view(["POST"])
+def deletePdf(request):
+    data        = request.data 
+    app_token   = data.get("app_token")
+    get_token   = app_auth_token_tb.objects.first()
+    
+
+    if app_token == get_token.token:
+
+
+        pdf_data      = pdf_data_tb.objects.all()
+        pdf_data.delete()
+     
+
+       
+        response    =   {
+                                "success"   : True,
+                                "message"   : "Successfully Deleted",
+                            }
+     
+
+    else: 
+        response = {
+
+                       "success"  : False,
+                       "message"  : "Invalid Token"
+                   }
+    
+    return Response(response)
+
+
+@api_view(["POST"])
+def deletePdfImage(request):
+    data        = request.data 
+    app_token   = data.get("app_token")
+    get_token   = app_auth_token_tb.objects.first()
+    
+
+    if app_token == get_token.token:
+
+
+        pdf_data      = pdf_to_image_data_tb.objects.all()
+        pdf_data.delete()
+     
+
+       
+        response    =   {
+                                "success"   : True,
+                                "message"   : "Successfully Deleted",
+                            }
+     
+
+    else: 
+        response = {
+
+                       "success"  : False,
+                       "message"  : "Invalid Token"
+                   }
+    
+    return Response(response)
