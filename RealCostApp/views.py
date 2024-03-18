@@ -159,8 +159,8 @@ def addAutoRenameImage(request):
 
     if app_token == get_token.token:
 
-        pdf_id = request.data.get('pdf_id')
-        coords = request.data.get('coords')
+        pdf_id  = request.data.get('pdf_id')
+        coords  = request.data.get('coords')
         
         coords_list = coords.split(',')
         
@@ -169,14 +169,14 @@ def addAutoRenameImage(request):
         images = pdf_to_image_data_tb.objects.filter(pdf_id=pdf_id)
         
         for image in images:
-            extracted_text = extract_text_from_coords(image.image.path, (x1, y1, x2, y2))
-            image.title = extracted_text
+            extracted_text  = extract_text_from_coords(image.image.path, (x1, y1, x2, y2))
+            image.title     = extracted_text
             image.save()
         
-        response = { 
-                               "success"   : True,
+        response =          { 
+                                "success"   : True,
                                 "message": "Titles updated successfully"
-                         }
+                            }
     else:
         response        =   {
                                 "success"   : False,
