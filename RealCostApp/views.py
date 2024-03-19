@@ -35,143 +35,122 @@ def appAuthToken(request):
 
     return Response(response)
 
-# @api_view(['POST'])
-# def addPdfToImage(request):
-#     data       = request.data
-#     app_token  = data.get('app_token')
-#     get_token  = app_auth_token_tb.objects.first()
-
-#     if app_token == get_token.token:
-#         pdf_file   = request.FILES.get('pdf_file')
-#         now        = datetime.now()
-
-#         if pdf_file and pdf_file.content_type.startswith('application/pdf'):
-            
-        
-#             images  = convert_from_bytes(pdf_file.read())
-
-#             pdf_data  = pdf_data_tb(
-
-#                     pdf_file     = pdf_file,
-#                     created_at   = now,
-#                     updated_at   = now
-                
-#                 )
-            
-#             pdf_data.save()
-
-#             for i, image in enumerate(images):
-#                 # Generate filenames and save images
-#                 image_filename = f'page_{i+1}.png'
-#                 page_title = f'Page {i+1}'  # Example: Page 1, Page 2, etc.
-                
-#                 pdf_images_data = pdf_to_image_data_tb(
-#                     pdf_id=pdf_data,
-#                     title=page_title,  # Set title here
-#                     created_at=now,
-#                     updated_at=now
-#                 )
-#                 pdf_images_data.save()
-
-#                 # Save the image file
-#                 image_io = BytesIO()
-#                 image.save(image_io, format='PNG')
-#                 image_file = ContentFile(image_io.getvalue(), name=image_filename)
-#                 pdf_images_data.image.save(image_filename, image_file, save=True)
-
-
-#             response = {
-
-#                             "success": True,
-#                             "message": "Successfully created",
-
-#                        }
-#         else:
-#             response = {
-
-#                             "success": False,
-#                             "message": "Invalid PDF file provided",
-            
-#                        }
-#     else:
-#         response = {
-
-#                         "success": False,
-#                         "message": "Invalid Token or User",
-        
-#                    }
-
-#     return Response(response)
-import concurrent.futures
-from io import BytesIO
 @api_view(['POST'])
 def addPdfToImage(request):
-    data = request.data
-    app_token = data.get('app_token')
-    get_token = app_auth_token_tb.objects.first()
+    data       = request.data
+    app_token  = data.get('app_token')
+    get_token  = app_auth_token_tb.objects.first()
 
-    if app_token != get_token.token:
-        return Response({"success": False, "message": "Invalid Token or User"})
+    if app_token == get_token.token:
+        pdf_file   = request.FILES.get('pdf_file')
+        now        = datetime.now()
 
-    pdf_file = request.FILES.get('pdf_file')
-    if not pdf_file or not pdf_file.content_type.startswith('application/pdf'):
-        return Response({"success": False, "message": "Invalid PDF file provided"})
+        if pdf_file and pdf_file.content_type.startswith('application/pdf'):
+            
+        
+            images  = convert_from_bytes(pdf_file.read())
 
-    now = datetime.now()
+            pdf_data  = pdf_data_tb(
 
-    try:
-        # Create pdf_data_tb entry
-        pdf_data = pdf_data_tb.objects.create(created_at=now, updated_at=now)
+                    pdf_file     = pdf_file,
+                    created_at   = now,
+                    updated_at   = now
+                
+                )
+            
+            pdf_data.save()
 
-        # Convert PDF to PNG images
-        images = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(convert_page_to_png, page) for page in convert_from_bytes(pdf_file.read(), dpi=300)]
-            for future in concurrent.futures.as_completed(futures):
-                images.append(future.result())
+            for i, image in enumerate(images):
+                # Generate filenames and save images
+                image_filename = f'page_{i+1}.png'
+                page_title = f'Page {i+1}'  # Example: Page 1, Page 2, etc.
+                
+                pdf_images_data = pdf_to_image_data_tb(
+                    pdf_id=pdf_data,
+                    title=page_title,  # Set title here
+                    created_at=now,
+                    updated_at=now
+                )
+                pdf_images_data.save()
 
-        # Process each image (page)
-        for i, image_bytes in enumerate(images, 1):
-            # Save the image data to the database
-            pdf_images_data = pdf_to_image_data_tb.objects.create(
-                pdf_id=pdf_data,
-                title=f'Page {i}',
-                created_at=now,
-                updated_at=now
-            )
+                # Save the image file
+                image_io = BytesIO()
+                image.save(image_io, format='PNG')
+                image_file = ContentFile(image_io.getvalue(), name=image_filename)
+                pdf_images_data.image.save(image_filename, image_file, save=True)
 
-            # Save the PNG image file
-            image_file = ContentFile(image_bytes, name=f'page_{i}.png')
-            pdf_images_data.image.save(f'page_{i}.png', image_file, save=True)
 
+            response = {
+
+                            "success": True,
+                            "message": "Successfully created",
+
+                       }
+        else:
+            response = {
+
+                            "success": False,
+                            "message": "Invalid PDF file provided",
+            
+                       }
+    else:
         response = {
-            "success": True,
-            "message": "Successfully created",
-        }
 
-    except Exception as e:
-        return Response({"success": False, "message": f"Error processing PDF: {str(e)}"})
+                        "success": False,
+                        "message": "Invalid Token or User",
+        
+                   }
 
     return Response(response)
 
-def convert_page_to_png(page):
-    img_bytes = BytesIO()
-    page.save(img_bytes, format='PNG')
-    return img_bytes.getvalue()
+# import PyPDFium2 as pdfium
 
+# @api_view(['POST'])
+# def addPdfToImage(request):
+#     data = request.data
+#     app_token = data.get('app_token')
+#     get_token = app_auth_token_tb.objects.first()
 
+#     if app_token == get_token.token:
+#         pdf_file = request.FILES.get('pdf_file')
+#         now = datetime.now()
 
+#         if pdf_file and pdf_file.content_type == 'application/pdf':
+#             pdf_data = pdf_data_tb.objects.create(pdf_file=pdf_file, created_at=now, updated_at=now)
+#             pages = pdfium.PyPDFium(pdf_file)
+#             for i, page in enumerate(pages):
+#                 page_title = f'Page {i+1}'
+#                 pdf_image_data = pdf_to_image_data_tb.objects.create(
+#                     pdf_id=pdf_data,
+#                     title=page_title,
+#                     created_at=now,
+#                     updated_at=now
+#                 )
+#                 # Convert PDF page to image
+#                 image = Image.open(BytesIO(page.render().tobytes()))
+#                 # Save the image file
+#                 image_filename = f'page_{i+1}.png'
+#                 image_io = BytesIO()
+#                 image.save(image_io, format='PNG')
+#                 image_file = ContentFile(image_io.getvalue(), name=image_filename)
+#                 pdf_image_data.image.save(image_filename, image_file, save=True)
 
+#             response = {
+#                 "success": True,
+#                 "message": "Successfully created",
+#             }
+#         else:
+#             response = {
+#                 "success": False,
+#                 "message": "Invalid PDF file provided",
+#             }
+#     else:
+#         response = {
+#             "success": False,
+#             "message": "Invalid Token or User",
+#         }
 
-
-
-
-
-
-
-
-
-
+#     return Response(response)
 
 
 
