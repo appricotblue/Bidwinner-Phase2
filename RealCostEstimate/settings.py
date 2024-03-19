@@ -86,6 +86,10 @@ DATABASES = {
         'PORT':'3306'
     }
 }
+# settings.py
+
+# Increase the maximum size of request data to allow larger file uploads (e.g., 10 megabytes)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 megabytes
 
 # DATABASES = {
 #     'default': {
