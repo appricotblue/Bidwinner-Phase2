@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-e&&_8%2ons6na3gf^b)=rj_5m6=4z!mv%$8v*^j9(k=q8zk4-1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost','127.0.0.1','64.227.165.222']
+ALLOWED_HOSTS = ['localhost','127.0.0.1','64.227.165.222','192.168.29.34']
 
 
 # Application definition
@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'RealCostApp',
     'corsheaders',
+    'channels'
 ]
 
 MIDDLEWARE = [
@@ -76,31 +77,27 @@ WSGI_APPLICATION = 'RealCostEstimate.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'realcost_db',
-        'USER': 'bidwinner',
-        'PASSWORD':'Bid@Phase2',
-        'HOST':'localhost',
-        'PORT':'3306'
-    }
-}
-# settings.py
-
-# Increase the maximum size of request data to allow larger file uploads (e.g., 10 megabytes)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 megabytes
-
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',
 #         'NAME': 'realcost_db',
-#         'USER': 'root',
-#         'PASSWORD':'',
+#         'USER': 'bidwinner',
+#         'PASSWORD':'Bid@Phase2',
 #         'HOST':'localhost',
 #         'PORT':'3306'
 #     }
 # }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'realcost_db',
+        'USER': 'root',
+        'PASSWORD':'',
+        'HOST':'localhost',
+        'PORT':'3306'
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -155,7 +152,7 @@ MEDIA_URL   ='/media/'
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    "http://localhost:5175",
 ]
 
 CORS_ALLOW_HEADERS = [
